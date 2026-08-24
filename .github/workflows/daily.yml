@@ -1,0 +1,37 @@
+name: Daily Bellhaven CRM Reconciliation
+
+# Runs the proposal-generation pipeline every day. This ONLY scans the
+# website and CRM and adds new proposals to the review queue - it never
+# writes to the CRM directly. A human still has to run review_app.py and
+# click Approve for any actual CRM change to happen.
+
+on:
+  schedule:
+    - cron: '0 6 * * *'   # every day at 06:00 UTC
+  workflow_dispatch: {}     # allows manually triggering a run from GitHub's UI too
+
+jobs:
+  run-pipeline:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run reconciliation pipeline
+        env:
+          BELLHAVEN_CRM_TOKEN: ${{ secrets.BELLHAVEN_CRM_TOKEN }}
+        run: python pipeline.py
+
+      - name: Commit updated state.db
+        run: |
+          git config user.name "bellhaven-pipeline-bot"
+          git config user.email "actions@github.com"
+          git add state.db
+          git diff --cached --quiet || git commit -m "Daily pipeline run: update proposal queue"
+          git push

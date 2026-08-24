@@ -1,0 +1,100 @@
+<!doctype html>
+<html>
+<head>
+  <title>Bellhaven CRM Review Queue</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 800px; margin: 30px auto; }
+    .card { border: 1px solid #ccc; border-radius: 6px; padding: 15px; margin-bottom: 15px; }
+    .type { font-weight: bold; text-transform: uppercase; color: #1b4f72; }
+    .facility { font-size: 16px; margin: 6px 0; }
+    .facility .loc { color: #666; font-weight: normal; }
+    .compare { background: #f9f9f9; border: 1px solid #ddd; border-radius: 4px; padding: 8px 12px; margin: 8px 0; font-size: 14px; }
+    .compare div { margin: 3px 0; }
+    .compare .field { font-weight: bold; display: inline-block; min-width: 130px; }
+    .compare .old { color: #9c3a3a; }
+    .compare .new { color: #1e6e46; }
+    pre { background: #f5f5f5; padding: 10px; overflow-x: auto; font-size: 12px; }
+    button { padding: 6px 14px; margin-right: 8px; cursor: pointer; }
+    .approve { background: #1e6e46; color: white; border: none; border-radius: 4px; }
+    .reject { background: #9c3a3a; color: white; border: none; border-radius: 4px; }
+    .note { background: #fff7ed; border-left: 3px solid #C9A227; padding: 6px 10px; font-size: 13px; margin: 8px 0; }
+  </style>
+</head>
+<body>
+  <h1>Review Queue ({{ proposals|length }} pending)</h1>
+
+  {% for p in proposals %}
+  <div class="card">
+    <div class="type">{{ p.change_type }}</div>
+
+    {% if p.current_account %}
+      <div class="facility">
+        {{ p.current_account.name }}
+        <span class="loc">({{ p.current_account.billing_city }}, {{ p.current_account.billing_state }})</span>
+      </div>
+    {% endif %}
+
+    {% if p.payload.note_to_reviewer %}
+      <div class="note">⚠ {{ p.payload.note_to_reviewer }}</div>
+    {% endif %}
+
+    {% if p.payload.patch %}
+      <div class="compare">
+        {% for field, new_value in p.payload.patch.items() %}
+          <div>
+            <span class="field">{{ field }}:</span>
+            {% if field == 'parent_id' %}
+              {% if p.current_account %}
+                <span class="old">{{ p.current_account.parent_name }}</span> &rarr;
+              {% endif %}
+              <span class="new">Bellhaven Senior Living (Parent Account)</span>
+            {% else %}
+              {% if p.current_account and p.current_account.get(field) is not none %}
+                <span class="old">{{ p.current_account.get(field) }}</span> &rarr;
+              {% endif %}
+              <span class="new">{{ new_value }}</span>
+            {% endif %}
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    {% if p.payload.fields %}
+      <div class="compare">
+        <em>New account to be created:</em>
+        {% for field, value in p.payload.fields.items() %}
+          <div>
+            <span class="field">{{ field }}:</span>
+            {% if field == 'parent_id' %}Bellhaven Senior Living (Parent Account){% else %}{{ value }}{% endif %}
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    {% if p.payload.new_account_fields %}
+      <div class="compare">
+        <em>CHOW: old account {{ p.payload.old_account_id }} preserved as-is. New account to be created:</em>
+        {% for field, value in p.payload.new_account_fields.items() %}
+          <div>
+            <span class="field">{{ field }}:</span>
+            {% if field == 'parent_id' %}Bellhaven Senior Living (Parent Account){% else %}{{ value }}{% endif %}
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    <details>
+      <summary style="cursor:pointer; font-size:12px; color:#888;">Raw proposal data</summary>
+      <pre>{{ p.payload | tojson(indent=2) }}</pre>
+    </details>
+
+    <form method="post" action="/approve/{{ p.proposal_key }}" style="display:inline">
+      <button class="approve" type="submit">Approve</button>
+    </form>
+    <form method="post" action="/reject/{{ p.proposal_key }}" style="display:inline">
+      <button class="reject" type="submit">Reject</button>
+    </form>
+  </div>
+  {% endfor %}
+</body>
+</html>
