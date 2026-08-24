@@ -32,7 +32,9 @@ STATUS_ACTIVE = "Active"
 STATUS_INACTIVE = "Inactive"
 STATUS_NEEDS_REVIEW = "Needs Review"
 
-# --- The Bellhaven parent account's real id (confirmed via API) ---
+# Fallback only - pipeline.py resolves this dynamically at runtime via
+# get_bellhaven_parent_id() in crm_client.py. This value is only used
+# if run_matching() is called without a parent id (e.g. in test scripts).
 BELLHAVEN_PARENT_ID = "0015QAPLGS3FVYEEEM"
 
 # --- Matching thresholds (we'll tune these once we test on real data) ---
